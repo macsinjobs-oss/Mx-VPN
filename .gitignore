@@ -164,3 +164,7 @@ PROGRESS.md
 /release-dist/
 *.jks
 *.keystore
+
+/linux/dist/
+/linux/__pycache__/
+/linux/tests/__pycache__/

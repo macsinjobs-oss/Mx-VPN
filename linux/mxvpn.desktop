@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Mx VPN
+Comment=Import and connect your own WireGuard VPN profile
+Exec=mxvpn
+Icon=network-vpn
+Categories=Network;Security;
+Terminal=false
+StartupWMClass=mxvpn

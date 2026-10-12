@@ -1,0 +1,41 @@
+name: Linux Mint package
+on:
+  push:
+    paths:
+      - 'linux/**'
+      - '.github/workflows/linux-mint-package.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package-and-verify:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install distribution dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y python3-gi gir1.2-gtk-3.0 network-manager policykit-1 wireguard-tools iproute2 iputils-ping xvfb xauth dbus-x11 desktop-file-utils
+      - name: Parser and backend tests
+        run: python3 -m unittest discover -s linux/tests -p test_core.py -v
+      - name: Build and install package
+        run: |
+          bash linux/build-deb.sh
+          sudo apt-get install -y ./linux/dist/mxvpn_0.1.0-1_all.deb
+          desktop-file-validate linux/mxvpn.desktop
+          dpkg-deb --info linux/dist/mxvpn_0.1.0-1_all.deb
+      - name: GTK control tests
+        run: dbus-run-session -- xvfb-run -a python3 linux/tests/test_gui.py
+      - name: Real WireGuard and GTK integration
+        run: sudo unshare --mount bash linux/tests/integration.sh
+      - name: Source archive and checksums
+        run: |
+          tar --exclude=dist --exclude=__pycache__ -czf linux/dist/MxVPN-linux-source-v0.1.0.tar.gz linux LICENSE
+          cd linux/dist
+          sha256sum mxvpn_0.1.0-1_all.deb MxVPN-linux-source-v0.1.0.tar.gz > LINUX-SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-mint-package
+          path: linux/dist/
+          if-no-files-found: error
