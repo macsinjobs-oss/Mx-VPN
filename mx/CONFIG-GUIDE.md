@@ -13,4 +13,4 @@ Use a single-peer full-tunnel WireGuard profile: `AllowedIPs` includes `0.0.0.0/
 
 Do not upload configurations to GitHub, post private keys, or use another person's configuration. Delete unencrypted download copies after a verified import, keeping any necessary backup in encrypted storage. Revoke a configuration in your Proton account if it is exposed.
 
-Linux Mx VPN is not available yet. Linux users may use their own Proton configuration with an independently installed WireGuard client; this is not an Mx VPN `.deb` release.
+Linux Mint: install `mxvpn_0.1.0-1_all.deb` from the same release page, open Mx VPN from the applications menu, click **Import config**, choose your own private `.conf`, then **Connect**. Use **Disconnect** to stop it. The package works through NetworkManager and uses the normal desktop authorization prompt. It contains no shared provider credentials.

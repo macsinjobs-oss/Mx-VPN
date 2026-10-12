@@ -9,7 +9,7 @@ All released downloads belong at [v0.1.0](https://github.com/macsinjobs-oss/Mx-V
 - Android: signed ARM64 APK, Android 7 or later. Real connection and profile flows tested on an ARM64 emulator; physical-phone testing remains pending.
 - macOS: Apple Silicon development DMG, macOS 27 or later. Apple Development signing; not notarized, and installation on another Mac is unverified. Read the package's installation notes before installing its privileged networking helper.
 - Windows: x64 and ARM64 portable executables. Cross-compiled and unit-tested; Windows installation, driver, interface and real connection remain untested.
-- Linux: no Mx VPN `.deb` yet. Current personal backend supports macOS; a Linux port and runtime verification are required.
+- Linux Mint: architecture-independent `.deb` with Import, Connect and Disconnect, using native NetworkManager/WireGuard. See [Linux install guide](linux/README.md).
 
 ## Get a VPN configuration
 
