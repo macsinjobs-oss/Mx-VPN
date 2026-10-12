@@ -8,7 +8,7 @@ server="mxserver$$"
 cleanup() {
   result=$?
   if [[ "$result" != 0 && -f "$work/nm.log" ]]; then
-    sed -n "/failed\|error\|unmanaged\|unavailable\|activation/p" "$work/nm.log" | tail -25
+    sed -n "/<warn>\|<error>\|state change\|dispatcher\|failed/p" "$work/nm.log" | tail -55
   fi
   for ns in "$client" "$server"; do
     ip netns pids "$ns" 2>/dev/null | xargs -r kill 2>/dev/null || true
