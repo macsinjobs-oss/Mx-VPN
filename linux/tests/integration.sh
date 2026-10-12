@@ -65,7 +65,7 @@ EOF
 ip netns exec "$client" dbus-daemon --system --nofork --nopidfile --address="unix:path=$work/system-bus" > "$work/dbus.log" 2>&1 &
 export DBUS_SYSTEM_BUS_ADDRESS="unix:path=$work/system-bus"
 for attempt in $(seq 1 50); do [[ -S "$work/system-bus" ]] && break; sleep .1; done
-ip netns exec "$client" /usr/sbin/NetworkManager --no-daemon --config="$work/NetworkManager.conf" --state-file="$work/nm.state" --pid-file="$work/nm.pid" > "$work/nm.log" 2>&1 &
+ip netns exec "$client" /usr/sbin/NetworkManager --debug --log-level=DEBUG --log-domains=CORE,DEVICE,IP4,IP6 --no-daemon --config="$work/NetworkManager.conf" --state-file="$work/nm.state" --pid-file="$work/nm.pid" > "$work/nm.log" 2>&1 &
 ready=false
 for attempt in $(seq 1 50); do
   if ip netns exec "$client" nmcli general status >/dev/null 2>&1; then ready=true; break; fi

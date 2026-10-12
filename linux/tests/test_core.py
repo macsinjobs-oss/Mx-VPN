@@ -79,4 +79,48 @@ class BackendTests(unittest.TestCase):
             with self.assertRaises(VpnError) as err: nm._run(['connection', 'show'])
             self.assertNotIn(KEY, str(err.exception))
 
+
+class ImportIsolationTests(unittest.TestCase):
+    def test_import_uses_private_temporary_file_not_key_arguments(self):
+        identifier = '11111111-1111-1111-1111-111111111111'
+        calls = []
+        temporary = None
+        def run(arguments):
+            nonlocal temporary
+            calls.append(arguments)
+            self.assertNotIn(KEY, ' '.join(arguments))
+            if 'import' in arguments:
+                temporary = Path(arguments[-1])
+                self.assertEqual(temporary.stat().st_mode & 0o777, 0o600)
+                self.assertEqual(temporary.read_text(), VALID)
+                return f"Connection successfully added ({identifier})"
+            return ''
+        nm = NetworkManager()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'Houston.conf'; path.write_text(VALID)
+            with patch.object(nm, '_run', side_effect=run):
+                self.assertEqual(nm.import_profile(path), identifier)
+            self.assertFalse(temporary.exists())
+            self.assertIn('connection.autoconnect', calls[1])
+            self.assertIn('no', calls[1])
+            self.assertIn('connection.permissions', calls[1])
+
+    def test_failed_permissions_setup_rolls_back_only_new_profile(self):
+        identifier = '11111111-1111-1111-1111-111111111111'
+        nm = NetworkManager()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'Houston.conf'; path.write_text(VALID)
+            with patch.object(nm, '_run', side_effect=[f'Imported ({identifier})', VpnError('Permission denied'), '']) as run:
+                with self.assertRaises(VpnError): nm.import_profile(path)
+                self.assertEqual(run.call_args_list[-1].args[0], ['connection','delete','uuid',identifier])
+
+    def test_disconnect_does_not_touch_unrelated_connections(self):
+        identifier = '11111111-1111-1111-1111-111111111111'
+        other = '22222222-2222-2222-2222-222222222222'
+        nm = NetworkManager()
+        from mxvpn_core import Profile
+        with patch.object(nm, 'list_profiles', return_value=[Profile(identifier,'Houston')]), patch.object(nm, 'active_ids', return_value={identifier,other}), patch.object(nm,'_run') as run:
+            nm.disconnect(identifier)
+            run.assert_called_once_with(['connection','down','uuid',identifier])
+
 if __name__ == '__main__': unittest.main()
