@@ -68,6 +68,8 @@ for attempt in $(seq 1 50); do
   sleep .2
  done
 [[ "$ready" == true ]] || { echo 'Isolated NetworkManager startup failed'; exit 1; }
+mkdir -m 700 "$work/xdg"
+export XDG_RUNTIME_DIR="$work/xdg"
 export MX_TEST_CONFIG="$work/houston-test.conf"
 export MX_SCREENSHOT="$root/dist/linux-connected.png"
 ip netns exec "$client" dbus-run-session -- xvfb-run -a python3 "$root/tests/live_flow.py"
