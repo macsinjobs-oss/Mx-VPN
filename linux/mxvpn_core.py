@@ -200,7 +200,7 @@ class NetworkManager:
                 "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager/Settings",
                 "org.freedesktop.NetworkManager.Settings", "AddConnection",
                 GLib.Variant("(a{sa{sv}})", (payload,)), GLib.VariantType.new("(o)"),
-                Gio.DBusCallFlags.NONE, 30000, None,
+                Gio.DBusCallFlags.ALLOW_INTERACTIVE_AUTHORIZATION, 30000, None,
             )
         except GLib.Error:
             raise VpnError("Import failed. Check NetworkManager and authorize the operation through Linux Mint's normal authentication prompt.") from None
