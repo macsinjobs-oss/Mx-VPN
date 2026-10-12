@@ -81,38 +81,28 @@ class BackendTests(unittest.TestCase):
 
 
 class ImportIsolationTests(unittest.TestCase):
-    def test_import_uses_private_temporary_file_not_key_arguments(self):
-        identifier = '11111111-1111-1111-1111-111111111111'
-        calls = []
-        temporary = None
-        def run(arguments):
-            nonlocal temporary
-            calls.append(arguments)
-            self.assertNotIn(KEY, ' '.join(arguments))
-            if 'import' in arguments:
-                temporary = Path(arguments[-1])
-                self.assertEqual(temporary.stat().st_mode & 0o777, 0o600)
-                self.assertEqual(temporary.read_text(), VALID)
-                return f"Connection successfully added ({identifier})"
-            return ''
+    def test_import_is_atomic_and_autoconnect_disabled(self):
         nm = NetworkManager()
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)/'Houston.conf'; path.write_text(VALID)
-            with patch.object(nm, '_run', side_effect=run):
-                self.assertEqual(nm.import_profile(path), identifier)
-            self.assertFalse(temporary.exists())
-            self.assertIn('connection.autoconnect', calls[1])
-            self.assertIn('no', calls[1])
-            self.assertIn('connection.permissions', calls[1])
+            with patch.object(nm, '_add_connection') as add, patch.object(nm, '_run') as run:
+                identifier = nm.import_profile(path)
+                settings = add.call_args.args[0]
+                self.assertEqual(settings['connection']['uuid'], identifier)
+                self.assertFalse(settings['connection']['autoconnect'])
+                self.assertTrue(settings['connection']['permissions'][0].startswith('user:'))
+                self.assertEqual(settings['wireguard']['private-key'], KEY)
+                self.assertEqual(settings['ipv4']['method'], 'manual')
+                self.assertEqual(settings['ipv6']['method'], 'disabled')
+                run.assert_not_called()
 
-    def test_failed_permissions_setup_rolls_back_only_new_profile(self):
-        identifier = '11111111-1111-1111-1111-111111111111'
+    def test_failed_atomic_import_does_not_mutate_existing_profiles(self):
         nm = NetworkManager()
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory)/'Houston.conf'; path.write_text(VALID)
-            with patch.object(nm, '_run', side_effect=[f'Imported ({identifier})', VpnError('Permission denied'), '']) as run:
+            with patch.object(nm, '_add_connection', side_effect=VpnError('Permission denied')), patch.object(nm, '_run') as run:
                 with self.assertRaises(VpnError): nm.import_profile(path)
-                self.assertEqual(run.call_args_list[-1].args[0], ['connection','delete','uuid',identifier])
+                run.assert_not_called()
 
     def test_disconnect_does_not_touch_unrelated_connections(self):
         identifier = '11111111-1111-1111-1111-111111111111'

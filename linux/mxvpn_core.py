@@ -8,7 +8,7 @@ import os
 import re
 import stat
 import subprocess
-import tempfile
+import sys
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
@@ -169,30 +169,75 @@ class NetworkManager:
         if identifier not in {profile.uuid for profile in self.list_profiles()}:
             raise VpnError("Select an available Mx VPN profile.")
 
+    def _add_connection(self, settings):
+        # Add complete settings atomically: importing via nmcli can enable
+        # autoconnect before a subsequent modify operation disables it.
+        import gi
+        from gi.repository import Gio, GLib
+        signatures = {
+            "id": "s", "uuid": "s", "type": "s", "interface-name": "s",
+            "autoconnect": "b", "permissions": "as", "method": "s",
+            "address-data": "aa{sv}", "dns": None, "private-key": "s",
+            "private-key-flags": "u", "peer-routes": "b", "peers": "aa{sv}",
+            "mtu": "u", "listen-port": "u",
+        }
+        def dictionary(values):
+            types = {"address": "s", "prefix": "u", "public-key": "s",
+                     "preshared-key": "s", "preshared-key-flags": "u",
+                     "endpoint": "s", "allowed-ips": "as", "persistent-keepalive": "u"}
+            return {key: GLib.Variant(types[key], value) for key, value in values.items()}
+        payload = {}
+        for section, values in settings.items():
+            payload[section] = {}
+            for key, value in values.items():
+                signature = signatures[key]
+                if key == "dns": signature = "au" if section == "ipv4" else "aay"
+                if key in {"address-data", "peers"}: value = [dictionary(item) for item in value]
+                payload[section][key] = GLib.Variant(signature, value)
+        try:
+            bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+            bus.call_sync(
+                "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager/Settings",
+                "org.freedesktop.NetworkManager.Settings", "AddConnection",
+                GLib.Variant("(a{sa{sv}})", (payload,)), GLib.VariantType.new("(o)"),
+                Gio.DBusCallFlags.NONE, 30000, None,
+            )
+        except GLib.Error:
+            raise VpnError("Import failed. Check NetworkManager and authorize the operation through Linux Mint's normal authentication prompt.") from None
+
     def import_profile(self, path):
         text = read_config(path)
         label = re.sub(r"[\x00-\x1f\x7f]", "", Path(path).stem).strip()[:60] or "WireGuard"
-        identifier = None
-        with tempfile.TemporaryDirectory(prefix="mxvpn-") as directory:
-            temporary = Path(directory) / ("mxwg" + uuid.uuid4().hex[:8] + ".conf")
-            fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-            with os.fdopen(fd, "w") as stream:
-                stream.write(text)
-            output = self._run(["connection", "import", "type", "wireguard", "file", str(temporary)])
-            match = re.search(r"\b[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}\b", output)
-            if not match:
-                raise VpnError("Import response was incomplete. Check NetworkManager before importing again.")
-            identifier = match[0]
-            try:
-                self._run(["connection", "modify", "uuid", identifier,
-                           "connection.id", PREFIX + label, "connection.autoconnect", "no",
-                           "connection.permissions", "user:" + pwd.getpwuid(os.getuid()).pw_name])
-            except VpnError:
-                try:
-                    self._run(["connection", "delete", "uuid", identifier])
-                except VpnError:
-                    raise VpnError("Import setup failed. Remove the newly imported mxwg profile in Network Settings before retrying.") from None
-                raise
+        parser = configparser.ConfigParser(interpolation=None, inline_comment_prefixes=("#", ";"))
+        parser.optionxform = str
+        parser.read_string(text)
+        interface, peer = parser["Interface"], parser["Peer"]
+        identifier = str(uuid.uuid4())
+        peer_settings = {
+            "public-key": peer["PublicKey"], "endpoint": peer["Endpoint"],
+            "allowed-ips": _items(peer["AllowedIPs"]),
+            "persistent-keepalive": int(peer.get("PersistentKeepalive", "0")),
+        }
+        if "PresharedKey" in peer:
+            peer_settings.update({"preshared-key": peer["PresharedKey"], "preshared-key-flags": 0})
+        settings = {
+            "connection": {"id": PREFIX + label, "uuid": identifier, "type": "wireguard",
+                           "interface-name": "mxwg" + identifier.replace("-", "")[:8],
+                           "autoconnect": False, "permissions": ["user:" + pwd.getpwuid(os.getuid()).pw_name + ":"]},
+            "wireguard": {"private-key": interface["PrivateKey"], "private-key-flags": 0,
+                          "peer-routes": True, "peers": [peer_settings]},
+        }
+        for field, property_name in [("MTU", "mtu"), ("ListenPort", "listen-port")]:
+            if field in interface: settings["wireguard"][property_name] = int(interface[field])
+        addresses = [ipaddress.ip_interface(item) for item in _items(interface["Address"])]
+        dns = [ipaddress.ip_address(item) for item in _items(interface["DNS"])]
+        for version, section in [(4, "ipv4"), (6, "ipv6")]:
+            family = [address for address in addresses if address.version == version]
+            settings[section] = {"method": "manual" if family else "disabled"}
+            if family:
+                settings[section]["address-data"] = [{"address": str(address.ip), "prefix": address.network.prefixlen} for address in family]
+                settings[section]["dns"] = [int.from_bytes(address.packed, sys.byteorder) if version == 4 else list(address.packed) for address in dns if address.version == version]
+        self._add_connection(settings)
         return identifier
 
     def connect(self, identifier):

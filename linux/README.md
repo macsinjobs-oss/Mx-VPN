@@ -10,7 +10,7 @@ Open **Mx VPN** from the applications menu. Click **Import config**, choose a pr
 
 For Houston, generate your own Proton configuration for US-FREE#44, #45 or #47; Proton identified these as active free Houston servers on October 12, 2026. The package contains no provider config or account credentials. Generate a separate profile per device and respect your provider's simultaneous-connection limits.
 
-NetworkManager stores imported secrets using its protected system profile storage and limits the profile to the importing user. Import copies are temporary owner-only files, removed after import. Keep your original `.conf` private; delete its plaintext download copy after successful import if you have a secure backup.
+NetworkManager stores imported secrets using its protected system profile storage and limits the profile to the importing user. Import passes complete settings over the local system bus with autoconnect disabled from creation; keys are never command-line arguments. Keep your original `.conf` private; delete its plaintext download copy after successful import if you have a secure backup.
 
 ## Scope
 
