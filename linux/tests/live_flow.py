@@ -48,6 +48,11 @@ try:
  wait(lambda:not window.busy and profile in window.active)
  for address in ['10.111.0.1','fd11::1']:
   subprocess.run(['ping','-c','2','-W','3',address],check=True,stdout=subprocess.DEVNULL)
+ wait(lambda:not window.busy and window.status.get_text()=='VPN tunnel active')
+ window.queue_draw()
+ for frame in range(10):
+  while GLib.MainContext.default().pending(): GLib.MainContext.default().iteration(False)
+  time.sleep(.02)
  print('GTK Import/Connect: peer responded through IPv4 and IPv6 WireGuard tunnel.')
  import gi
  gi.require_version('Gdk','3.0')
