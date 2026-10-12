@@ -1,0 +1,5 @@
+include(${CMAKE_CURRENT_LIST_DIR}/branding.cmake)
+set(MACOS_NE OFF CACHE BOOL "Use established privileged helper" FORCE)
+set(MX_VPN_HELPER_BUILD ON CACHE BOOL "Authenticate local helper clients" FORCE)
+set(MX_VPN_ARM64_ONLY ON CACHE BOOL "Apple Silicon target" FORCE)
+set(CLIENT_SERVICE_NAME MxVPN-service CACHE STRING "Isolated helper executable" FORCE)

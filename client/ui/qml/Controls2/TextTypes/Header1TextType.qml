@@ -1,0 +1,20 @@
+import QtQuick
+
+import Style 1.0
+
+Text {
+    Accessible.role: Accessible.StaticText
+    Accessible.name: text
+
+    lineHeight: 38 + LanguageUiController.getLineHeightAppend()
+    lineHeightMode: Text.FixedHeight
+
+    color: AmneziaStyle.color.paleGray
+    font.pixelSize: 32
+    font.weight: 700
+    font.family: "PT Root UI VF"
+    font.letterSpacing: -1.0
+
+    wrapMode: Text.WordWrap
+}
+
