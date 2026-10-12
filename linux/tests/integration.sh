@@ -58,6 +58,8 @@ cat > "$work/NetworkManager.conf" <<EOF
 [main]
 plugins=keyfile
 dns=none
+[keyfile]
+unmanaged-devices=
 [device-test-link]
 match-device=interface-name:mxvethc
 managed=0
