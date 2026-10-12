@@ -18,11 +18,12 @@ cleanup() {
 }
 trap cleanup EXIT
 mount --make-rprivate /
-mkdir -p "$work/nm-etc/system-connections" "$work/nm-run" "$work/nm-var"
-mkdir -p /etc/NetworkManager /run/NetworkManager /var/lib/NetworkManager
+mkdir -p "$work/nm-etc/system-connections" "$work/nm-run" "$work/nm-var" "$work/netplan"
+mkdir -p /etc/NetworkManager /run/NetworkManager /var/lib/NetworkManager /etc/netplan
 mount --bind "$work/nm-etc" /etc/NetworkManager
 mount --bind "$work/nm-run" /run/NetworkManager
 mount --bind "$work/nm-var" /var/lib/NetworkManager
+mount --bind "$work/netplan" /etc/netplan
 ip netns add "$client"
 ip netns add "$server"
 ip link add mxvethc type veth peer name mxveths

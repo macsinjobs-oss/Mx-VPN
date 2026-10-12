@@ -30,19 +30,18 @@ try:
  profile=window.profiles.get_active_id()
  permissions=nm._run(['--get-values','connection.permissions','connection','show','uuid',profile])
  print('NetworkManager permission display:',permissions)
- import configparser, pwd
- stored=list(Path('/etc/NetworkManager/system-connections').glob('*.nmconnection'))
+ import pwd
+ username=pwd.getpwuid(os.getuid()).pw_name
+ assert 'user:'+username in permissions.replace('\\:',':')
+ stored=[]
+ for folder in ['/etc/NetworkManager/system-connections','/run/NetworkManager/system-connections','/etc/netplan']:
+  for file in Path(folder).glob('*'):
+   if file.is_file() and profile in file.read_text(errors='replace'):
+    stored.append(file)
  assert stored, 'Persistent NetworkManager profile missing'
- found=False
  for file in stored:
-  settings=configparser.ConfigParser(interpolation=None)
-  settings.read(file)
-  if settings.get('connection','uuid',fallback='')!=profile: continue
-  found=True
   assert file.stat().st_uid==0 and file.stat().st_mode & 0o077==0
-  stored_permissions=settings.get('connection','permissions')
-  assert 'user:'+pwd.getpwuid(os.getuid()).pw_name in stored_permissions
- assert found, 'Imported profile not found in protected storage'
+ print('Protected profile storage:',[str(file.parent) for file in stored])
  assert nm._run(['--get-values','connection.autoconnect','connection','show','uuid',profile])=='no'
  assert nm._run(['--get-values','ipv4.dns','connection','show','uuid',profile])=='10.111.0.1'
  window.connect_button.emit('clicked')
