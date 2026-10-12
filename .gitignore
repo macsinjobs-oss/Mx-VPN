@@ -168,3 +168,6 @@ PROGRESS.md
 /linux/dist/
 /linux/__pycache__/
 /linux/tests/__pycache__/
+
+# Keep the Linux package builder despite upstream build-output patterns.
+!/linux/build-deb.sh
