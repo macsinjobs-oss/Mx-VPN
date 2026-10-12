@@ -55,6 +55,7 @@ try:
  from gi.repository import Gdk
  image=Gdk.pixbuf_get_from_window(window.get_window(),0,0,*window.get_size())
  image.savev(os.environ['MX_SCREENSHOT'],'png',[],[])
+ os.chmod(os.environ['MX_SCREENSHOT'],0o644)
  window.disconnect_button.emit('clicked')
  wait(lambda:not window.busy and profile not in window.active)
  assert window.status.get_text()=='Disconnected'

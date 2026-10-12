@@ -9,7 +9,11 @@ permissions:
   contents: read
 jobs:
   package-and-verify:
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +40,6 @@ jobs:
           sha256sum mxvpn_0.1.0-1_all.deb MxVPN-linux-source-v0.1.0.tar.gz > LINUX-SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-mint-package
+          name: linux-mint-package-${{ matrix.runner }}
           path: linux/dist/
           if-no-files-found: error
